@@ -153,7 +153,7 @@ const HomePage = ({ onStart }) => {
 
       {/* Footer */}
       <footer className="py-32 border-t border-white/5 bg-slate-950">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-20">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-20">
           <div>
             <div className="text-3xl font-black text-white mb-6">Evalify</div>
             <p className="text-slate-500 leading-relaxed">Built for educators who believe in a more transparent and tech-enabled learning environment.</p>
@@ -169,13 +169,6 @@ const HomePage = ({ onStart }) => {
             </div>
           </div>
           
-          <div>
-            <h5 className="font-bold text-white mb-8 uppercase tracking-widest text-sm">Join Our Newsletter</h5>
-            <div className="flex gap-2">
-              <input type="email" placeholder="email@university.edu" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-3 flex-1 text-sm text-white" />
-              <button className="bg-blue-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-500 transition-colors">Join</button>
-            </div>
-          </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 mt-32 pt-10 border-t border-white/5 text-center text-slate-600 text-sm font-medium">
           &copy; 2025 Evalify Platforms. Created for the next generation of software masters.
