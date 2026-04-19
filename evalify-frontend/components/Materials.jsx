@@ -120,9 +120,9 @@ const Materials = ({ user }) => {
     }
 
     // Determine if we need a viewer for Office docs
-    const isOfficeDoc = m.file_url.match(/\.(docx|pptx|xlsx|doc|ppt|xls)$/i);
+    const isOfficeDoc = m.type === 'SLIDES' || m.type === 'WORD' || m.file_url.match(/\.(docx|pptx|xlsx|doc|ppt|xls)$/i);
     const viewerUrl = isOfficeDoc
-      ? `https://docs.google.com/viewer?url=${encodeURIComponent(m.file_url)}&embedded=true`
+      ? `https://docs.google.com/gview?url=${encodeURIComponent(m.file_url)}&embedded=true`
       : m.file_url;
 
     const newTab = window.open();
@@ -141,6 +141,7 @@ const Materials = ({ user }) => {
           </body>
         </html>
       `);
+      newTab.document.close();
     } else {
       alert("Popup blocked! Enable popups to access class resources.");
     }

@@ -142,16 +142,28 @@ const StudentDashboard = ({ student, onJoinClass, onNavigate }) => {
       console.error("Failed to mark attendance", err);
     }
 
+    const isOfficeDoc = m.type === 'SLIDES' || m.type === 'WORD' || m.file_url.match(/\.(docx|pptx|xlsx|doc|ppt|xls)$/i);
+    const viewerUrl = isOfficeDoc
+      ? `https://docs.google.com/gview?url=${encodeURIComponent(m.file_url)}&embedded=true`
+      : m.file_url;
+
     const newTab = window.open();
     if (newTab) {
       newTab.document.write(`
         <html>
-          <head><title>Evalify Viewer - ${m.title}</title></head>
-          <body style="margin:0;background:#0f172a;display:flex;align-items:center;justify-content:center;">
-            <iframe src="${m.file_url}" width="100%" height="100%" frameborder="0"></iframe>
+          <head>
+            <title>Evalify Viewer - ${m.title}</title>
+            <style>
+              body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0f172a; }
+              iframe { width: 100%; height: 100%; border: none; }
+            </style>
+          </head>
+          <body>
+            <iframe src="${viewerUrl}" allowfullscreen></iframe>
           </body>
         </html>
       `);
+      newTab.document.close();
     } else {
       alert("Popup blocked! Enable popups to access class resources.");
     }
