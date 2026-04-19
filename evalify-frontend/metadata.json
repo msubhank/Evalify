@@ -1,0 +1,9 @@
+
+{
+  "name": "Evalify",
+  "description": "A secure, smart digital assessment and skill development LMS for software engineering, featuring an AI-integrated IDE and automated attendance.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
