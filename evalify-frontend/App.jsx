@@ -147,6 +147,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeAssessmentId, setActiveAssessmentId] = useState(null);
 
   const [attendance, setAttendance] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
@@ -279,7 +280,7 @@ const App = () => {
       switch (activeTab) {
         case 'dashboard':
           if (user.role === 'TEACHER') return <TeacherDashboard teacher={user} />;
-          if (user.role === 'STUDENT') return <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(tab) => setActiveTab(tab)} />;
+          if (user.role === 'STUDENT') return <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(tab, id) => { setActiveTab(tab); if (id) setActiveAssessmentId(id); }} />;
           return null;
 
         case 'materials':
@@ -287,7 +288,7 @@ const App = () => {
         case 'assessment-builder':
           return <AssessmentBuilder teacher={user} />;
         case 'ide':
-          return <CodingIDE student={user} />;
+          return <CodingIDE student={user} initialAssignmentId={activeAssessmentId} />;
         case 'assignments':
           const pendingByClass = pendingAssignments.reduce((acc, assignment) => {
             const cls = userClasses.find(c => c.id === assignment.class_id);
@@ -332,7 +333,7 @@ const App = () => {
                             <p className="text-sm text-slate-500 mb-10 leading-relaxed line-clamp-3 pointer-events-none">{a.description}</p>
                           </div>
                           <button
-                            onClick={() => setActiveTab('ide')}
+                            onClick={() => { setActiveTab('ide'); setActiveAssessmentId(a.id); }}
                             className="mt-auto w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20 active:scale-95 border border-white/5"
                           >
                             {a.type === 'CODING' ? 'Open Smart IDE' : 'Open Assessment'}

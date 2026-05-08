@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
 
-const CodingIDE = ({ student }) => {
+const CodingIDE = ({ student, initialAssignmentId }) => {
   const [code, setCode] = useState('// Evalify Web-IDE\n// Select an assignment from the dropdown above to begin.\n\nfunction solve() {\n  console.log("Ready for assessment...");\n}');
   const [language, setLanguage] = useState('javascript');
   const [stdin, setStdin] = useState('');
@@ -12,7 +12,7 @@ const CodingIDE = ({ student }) => {
   const [hasRun, setHasRun] = useState(false);
 
   const [assignments, setAssignments] = useState([]);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(initialAssignmentId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userSubmissions, setUserSubmissions] = useState([]);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -33,6 +33,15 @@ const CodingIDE = ({ student }) => {
     };
     fetchData();
   }, [student.id]);
+
+  useEffect(() => {
+    if (initialAssignmentId && assignments.length > 0) {
+      setSelectedAssignmentId(initialAssignmentId);
+      const assignment = assignments.find(a => a.id === initialAssignmentId);
+      if (assignment?.starter_code) setCode(assignment.starter_code);
+      if (assignment?.language) setLanguage(assignment.language);
+    }
+  }, [initialAssignmentId, assignments]);
 
   // Derived state for the currently selected assignment
   const selectedAssignment = assignments.find(a => a.id === selectedAssignmentId);

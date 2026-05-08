@@ -309,31 +309,33 @@ const AssessmentBuilder = ({ teacher, scopedClassId = null, onAssignmentCreated 
                         const classInfo = classes.find(c => c.id === a.class_id);
                         return (
                             <div key={a.id} className="p-8 bg-slate-950 rounded-[48px] border border-white/5 hover:border-blue-500/20 transition-all group relative flex flex-col h-full">
-                                {(a.duration_value || a.duration) && (
-                                    <div className="absolute top-8 right-8 text-[10px] bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-yellow-500/20">
-                                        ⏱️ {a.duration_value || a.duration} {a.duration_unit || a.durationUnit}
+                                <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                                    <div className="flex flex-wrap items-center gap-2 flex-1">
+                                        <span className={`text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase ${a.type === 'CODING' ? 'bg-green-500/10 text-green-400' :
+                                            a.type === 'QUIZ' ? 'bg-yellow-500/10 text-yellow-400' :
+                                                a.type === 'EXAM' ? 'bg-red-500/10 text-red-400' :
+                                                    'bg-blue-500/10 text-blue-400'
+                                            }`}>
+                                            {a.type || 'LAB'}
+                                        </span>
+                                        {!scopedClassId && <span className="text-[10px] text-slate-500 font-bold uppercase line-clamp-1 flex-1" title={classInfo?.name}>{classInfo?.name || 'Loading...'}</span>}
                                     </div>
-                                )}
-                                <div className="mb-6 flex items-center gap-2">
-                                    <span className={`text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase ${a.type === 'CODING' ? 'bg-green-500/10 text-green-400' :
-                                        a.type === 'QUIZ' ? 'bg-yellow-500/10 text-yellow-400' :
-                                            a.type === 'EXAM' ? 'bg-red-500/10 text-red-400' :
-                                                'bg-blue-500/10 text-blue-400'
-                                        }`}>
-                                        {a.type || 'LAB'}
-                                    </span>
-                                    {!scopedClassId && <span className="text-[10px] text-slate-500 font-bold uppercase">{classInfo?.name || 'Loading...'}</span>}
+                                    {(a.duration_value || a.duration) && (
+                                        <div className="shrink-0 text-[10px] bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-yellow-500/20">
+                                            ⏱️ {a.duration_value || a.duration} {(a.duration_unit || a.durationUnit)?.charAt(0)}
+                                        </div>
+                                    )}
                                 </div>
-                                <h4 className="font-black text-xl mb-4 pr-20 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{a.title}</h4>
+                                <h4 className="font-black text-xl mb-4 group-hover:text-blue-400 transition-colors uppercase tracking-tight">{a.title}</h4>
                                 <p className="text-sm text-slate-500 mb-8 font-medium line-clamp-2 leading-relaxed">{a.description}</p>
                                 <div className="flex gap-4 mt-auto">
-                                    <button 
-                                        onClick={() => handleModifyClick(a)} 
+                                    <button
+                                        onClick={() => handleModifyClick(a)}
                                         className="flex-1 py-3 rounded-[20px] bg-slate-900 text-[10px] font-black text-white border border-white/10 hover:bg-slate-800 tracking-widest uppercase transition-all"
                                     >
                                         Modify
                                     </button>
-                                    <button onClick={() => handleDeleteAssignment(a.id)} className="flex-1 py-3 rounded-[20px] bg-red-500/10 text-[10px] font-black text-red-400 border border-red-500/10 hover:bg-red-500 hover:text-white transition-all tracking-widest uppercase">Archive</button>
+                                    <button onClick={() => handleDeleteAssignment(a.id)} className="flex-1 py-3 rounded-[20px] bg-red-500/10 text-[10px] font-black text-red-400 border border-red-500/10 hover:bg-red-500 hover:text-white transition-all tracking-widest uppercase">Delete</button>
                                 </div>
                             </div>
                         );

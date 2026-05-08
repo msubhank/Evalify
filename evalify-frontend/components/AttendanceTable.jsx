@@ -80,14 +80,6 @@ const AttendanceTable = ({ attendance, students, classes, showClassColumn = true
                     </button>
                 </div>
 
-                <div className="flex gap-4">
-                    <button
-                        onClick={onArchiveOld}
-                        className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border bg-amber-600/10 text-amber-500 border-amber-500/20 hover:bg-amber-600 hover:text-white transition-all"
-                    >
-                        Archive {'>'} 30 Days
-                    </button>
-                </div>
             </div>
 
             <div className="overflow-x-auto bg-slate-950/50 rounded-3xl border border-white/5">
