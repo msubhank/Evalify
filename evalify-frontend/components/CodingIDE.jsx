@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 
+const DEFAULT_CODE = '// Evalify Web-IDE\n// Select an assignment from the dropdown above to begin.\n\nfunction solve() {\n  console.log("Ready for assessment...");\n}';
 
 const CodingIDE = ({ student, initialAssignmentId }) => {
-  const [code, setCode] = useState('// Evalify Web-IDE\n// Select an assignment from the dropdown above to begin.\n\nfunction solve() {\n  console.log("Ready for assessment...");\n}');
+  const [code, setCode] = useState(DEFAULT_CODE);
   const [language, setLanguage] = useState('javascript');
   const [stdin, setStdin] = useState('');
   const [switchCount, setSwitchCount] = useState(0);
@@ -15,18 +16,21 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(initialAssignmentId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userSubmissions, setUserSubmissions] = useState([]);
+  const [integrityLogs, setIntegrityLogs] = useState([]);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [assignmentsRes, submissionsRes] = await Promise.all([
+        const [assignmentsRes, submissionsRes, integrityRes] = await Promise.all([
           fetch(`${API_URL}/assignments/user/${student.id}`).then(res => res.json()),
-          fetch(`${API_URL}/assignments/submissions?studentId=${student.id}`).then(res => res.json())
+          fetch(`${API_URL}/assignments/submissions?studentId=${student.id}`).then(res => res.json()),
+          fetch(`${API_URL}/integrity?studentId=${student.id}`).then(res => res.json())
         ]);
         setAssignments(assignmentsRes);
         setUserSubmissions(submissionsRes);
+        if (Array.isArray(integrityRes)) setIntegrityLogs(integrityRes);
       } catch (error) {
         console.error("Error fetching IDE data:", error);
       }
@@ -34,14 +38,60 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
     fetchData();
   }, [student.id]);
 
+  // Sync integrity flags from backend
+  useEffect(() => {
+    if (selectedAssignmentId && integrityLogs.length > 0) {
+      const logsForAssignment = integrityLogs.filter(log => 
+        log.assignment_id === selectedAssignmentId && log.type === 'TAB_SWITCH'
+      );
+      setSwitchCount(logsForAssignment.length);
+    } else {
+      setSwitchCount(0);
+    }
+  }, [selectedAssignmentId, integrityLogs]);
+
   useEffect(() => {
     if (initialAssignmentId && assignments.length > 0) {
       setSelectedAssignmentId(initialAssignmentId);
       const assignment = assignments.find(a => a.id === initialAssignmentId);
-      if (assignment?.starter_code) setCode(assignment.starter_code);
-      if (assignment?.language) setLanguage(assignment.language);
+      
+      const storageKey = `evalify_ide_${student.id}_${initialAssignmentId}`;
+      const savedState = localStorage.getItem(storageKey);
+      
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setCode(parsed.code);
+          setLanguage(parsed.language || assignment?.language || 'javascript');
+          setStdin(parsed.stdin || '');
+        } catch (e) {
+          if (assignment?.starter_code) setCode(assignment.starter_code);
+          if (assignment?.language) setLanguage(assignment.language);
+        }
+      } else {
+        if (assignment?.starter_code) setCode(assignment.starter_code);
+        if (assignment?.language) setLanguage(assignment.language);
+      }
     }
-  }, [initialAssignmentId, assignments]);
+  }, [initialAssignmentId, assignments, student.id]);
+
+  // Load scratchpad if no assignment is selected initially
+  useEffect(() => {
+    if (!initialAssignmentId) {
+      const storageKey = `evalify_ide_${student.id}_scratchpad`;
+      const savedState = localStorage.getItem(storageKey);
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setCode(parsed.code || DEFAULT_CODE);
+          setLanguage(parsed.language || 'javascript');
+          setStdin(parsed.stdin || '');
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }, [initialAssignmentId, student.id]);
 
   // Derived state for the currently selected assignment
   const selectedAssignment = assignments.find(a => a.id === selectedAssignmentId);
@@ -136,19 +186,75 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
   const handleAssignmentSelect = (id) => {
     setSelectedAssignmentId(id);
     const assignment = assignments.find(a => a.id === id);
-    if (assignment?.starter_code) {
-      setCode(assignment.starter_code);
+    
+    if (!id) {
+      const storageKey = `evalify_ide_${student.id}_scratchpad`;
+      const savedState = localStorage.getItem(storageKey);
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setCode(parsed.code || DEFAULT_CODE);
+          setLanguage(parsed.language || 'javascript');
+          setStdin(parsed.stdin || '');
+        } catch (e) {
+          setCode(DEFAULT_CODE);
+          setLanguage('javascript');
+          setStdin('');
+        }
+      } else {
+        setCode(DEFAULT_CODE);
+        setLanguage('javascript');
+        setStdin('');
+      }
+      return;
     }
-    if (assignment?.language) {
-      setLanguage(assignment.language);
+
+    const storageKey = `evalify_ide_${student.id}_${id}`;
+    const savedState = localStorage.getItem(storageKey);
+    
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        setCode(parsed.code);
+        setLanguage(parsed.language || assignment?.language || 'javascript');
+        setStdin(parsed.stdin || '');
+      } catch (e) {
+        if (assignment?.starter_code) setCode(assignment.starter_code);
+        if (assignment?.language) setLanguage(assignment.language);
+      }
+    } else {
+      if (assignment?.starter_code) {
+        setCode(assignment.starter_code);
+      } else {
+        setCode(DEFAULT_CODE);
+      }
+      if (assignment?.language) {
+        setLanguage(assignment.language);
+      }
+      setStdin('');
     }
   };
 
+  // Auto-save code to localStorage
+  useEffect(() => {
+    const activeId = selectedAssignmentId || 'scratchpad';
+    if (code === DEFAULT_CODE) return; // Prevent overwriting with default placeholder
+
+    const storageKey = `evalify_ide_${student.id}_${activeId}`;
+    localStorage.setItem(storageKey, JSON.stringify({ code, language, stdin }));
+  }, [code, language, stdin, selectedAssignmentId, student.id]);
+
   // Integrity logic switching detection
   useEffect(() => {
+    let isUnloading = false;
+    
+    const handleBeforeUnload = () => {
+      isUnloading = true;
+    };
+
     const handleVisibilityChange = async () => {
       // Only log if the assignment is selected and NOT yet submitted
-      if (document.hidden && selectedAssignmentId && !hasSubmitted) {
+      if (document.hidden && selectedAssignmentId && !hasSubmitted && !isUnloading) {
         // Show a warning popup immediately
         alert("WARNING: Navigating away from the assessment tab is strictly prohibited! Your action has been flagged and reported to your instructor.");
 
@@ -169,8 +275,13 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
       }
     };
 
+    window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [student.id, selectedAssignmentId, hasSubmitted]);
 
   const handleRun = async () => {
@@ -262,6 +373,16 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
 
         const newSubmission = await response.json();
         setUserSubmissions([...userSubmissions, newSubmission]);
+        
+        // Clear local storage on successful submission
+        localStorage.removeItem(`evalify_ide_${student.id}_${selectedAssignmentId}`);
+        
+        // Clear UI states
+        setSwitchCount(0);
+        setCode(selectedAssignment?.starter_code || DEFAULT_CODE);
+        setStdin('');
+        setOutput('');
+        
         alert("Success! Your code has been delivered to your instructor.");
       } catch (e) {
         alert("Submission system is currently unavailable.");
@@ -417,6 +538,7 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
                 formatOnPaste: true,
                 scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
                 renderLineHighlight: "all",
+                readOnly: hasSubmitted,
               }}
             />
           </div>
