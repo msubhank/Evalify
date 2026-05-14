@@ -177,7 +177,7 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
     setIsExecuting(true);
     setOutput('');
     try {
-      const response = await fetch('http://localhost:5000/api/execute', {
+      const response = await fetch(`${API_URL}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
