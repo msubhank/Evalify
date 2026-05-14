@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
-const Layout = ({ children, user, onLogout, activeTab, setActiveTab }) => {
+const Layout = ({ user, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'materials', label: 'Materials', icon: '📚' },
@@ -10,6 +13,9 @@ const Layout = ({ children, user, onLogout, activeTab, setActiveTab }) => {
     ...(user?.role === 'TEACHER' ? [{ id: 'assessment-builder', label: 'Assessment Builder', icon: '🛠️' }] : []),
     { id: 'attendance', label: 'Attendance', icon: '✅' },
   ];
+
+  // Helper to determine title
+  const currentTab = tabs.find(t => location.pathname.includes(t.id)) || tabs[0];
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden relative">
@@ -32,17 +38,18 @@ const Layout = ({ children, user, onLogout, activeTab, setActiveTab }) => {
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {tabs.map((tab) => (
-            <button
+            <NavLink
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id
+              to={`/app/${tab.id}`}
+              onClick={() => setIsSidebarOpen(false)}
+              className={({ isActive }) => `w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
                 ? 'bg-blue-600/10 text-blue-400'
                 : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
                 }`}
             >
               <span className="mr-3 text-lg">{tab.icon}</span>
               {tab.label}
-            </button>
+            </NavLink>
           ))}
         </nav>
 
@@ -76,7 +83,7 @@ const Layout = ({ children, user, onLogout, activeTab, setActiveTab }) => {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <h2 className="text-xl font-semibold capitalize truncate">
-              {activeTab.replace('-', ' ')}
+              {currentTab ? currentTab.label : 'Dashboard'}
             </h2>
           </div>
           <div className="flex items-center space-x-4">
@@ -86,7 +93,7 @@ const Layout = ({ children, user, onLogout, activeTab, setActiveTab }) => {
           </div>
         </header>
         <div className="p-8">
-          {children}
+          <Outlet />
         </div>
       </main>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import CodingIDE from './components/CodingIDE';
 import Materials from './components/Materials';
@@ -140,14 +141,21 @@ const TeacherAttendanceView = ({ user, attendance, classes, allStudents }) => {
     </div>
   );
 };
-// ----------------------------------------
 
-const App = () => {
-  const [view, setView] = useState('home');
+// ----------------------------------------
+// --- Helper component to get URL params for IDE ---
+const IDEWrapper = ({ student }) => {
+  const { assignmentId } = useParams();
+  return <CodingIDE student={student} initialAssignmentId={assignmentId} />;
+};
+
+// --- Main App Content ---
+const AppContent = () => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeAssessmentId, setActiveAssessmentId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [attendance, setAttendance] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
@@ -163,7 +171,7 @@ const App = () => {
       setSession(session);
 
       if (event === 'PASSWORD_RECOVERY') {
-        setView('updatePassword');
+        navigate('/update-password');
       }
 
       if (session) {
@@ -173,8 +181,6 @@ const App = () => {
           const storedUser = res.data;
 
           if (storedUser) {
-            // In PostgreSQL, joining classes is handled by class_enrollments table.
-            // We fetch the real, live classes the user is enrolled in (or teaching)
             const [classesRes, attendanceRes, rosterRes, assignmentsRes, submissionsRes, attemptsRes] = await Promise.all([
               axios.get(`${API_URL}/classes/user/${session.user.id}`),
               axios.get(`${API_URL}/attendance?${storedUser.role === 'STUDENT' ? `studentId=${session.user.id}` : `teacherId=${session.user.id}`}`),
@@ -201,104 +207,102 @@ const App = () => {
             setUser((prevUser) => {
               if (!prevUser) {
                 if (session.user.email_confirmed_at && event !== 'PASSWORD_RECOVERY') {
-                  setView('app');
+                  if (location.pathname === '/' || location.pathname === '/auth') {
+                     navigate('/app/dashboard', { replace: true });
+                  }
                 }
                 return storedUser;
               }
-              // Merge the fetched class data into the existing user state
-              // rather than discarding the fresh data if IDs match.
               return { ...prevUser, ...storedUser, joinedClasses: storedUser.joinedClasses };
             });
           }
         } catch (err) {
           console.error("Error fetching user or classes on state change:", err);
+        } finally {
+          setIsLoading(false);
         }
-      } else if (event === 'SIGNED_OUT') {
+      } else {
         setUser(null);
-        setSession(null);
-        setView('home');
+        setIsLoading(false);
+        if (location.pathname.startsWith('/app')) {
+           navigate('/', { replace: true });
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Polling for real-time integrity and attendance updates
-  useEffect(() => {
-    if (view === 'app') {
-      // Functional polling re-added via backend if needed later
-    }
-  }, [view]);
+  }, [navigate, location.pathname]);
 
   const handleLogin = (newUser) => {
     setUser(newUser);
-    // Assume fetching happens via onAuthStateChange automatically
-    setView('app');
-    setActiveTab('dashboard');
+    navigate('/app/dashboard');
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setUserClasses([]);
-    setView('home');
+    navigate('/');
   };
 
-  if (view === 'home') return <HomePage onStart={() => setView('auth')} />;
-  if (view === 'auth') return <AuthPortal onLogin={handleLogin} onSignupSuccess={() => setView('emailConfirmation')} onBack={() => setView('home')} />;
-  if (view === 'emailConfirmation') return <EmailConfirmation onBack={() => setView('home')} />;
-  if (view === 'updatePassword') return <UpdatePassword onPasswordUpdated={() => setView('app')} />;
-  if (view === 'app' && user) {
+  if (isLoading) {
+    return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
+  }
 
-    const userAssignments = assignments.filter(a => userClasses.some(c => c.id === a.class_id));
-    const pendingAssignments = userAssignments.filter(a => {
-      const isPastDeadline = new Date(a.deadline).setHours(23, 59, 59, 999) < Date.now();
-      const hasSubmitted = submissions.some(s => s.assignment_id === a.id);
+  // Calculate pending assignments for the assignments tab
+  const userAssignments = assignments.filter(a => userClasses.some(c => c.id === a.class_id));
+  const pendingAssignments = userAssignments.filter(a => {
+    const isPastDeadline = new Date(a.deadline).setHours(23, 59, 59, 999) < Date.now();
+    const hasSubmitted = submissions.some(s => s.assignment_id === a.id);
 
-      let isTimerExpired = false;
-      const attempt = attempts.find(att => att.assignment_id === a.id);
-      if (attempt && (a.durationValue || a.duration)) {
-        const value = parseInt(a.durationValue || a.duration, 10);
-        let totalSeconds = 0;
-        const unit = a.durationUnit || a.duration_unit;
-        if (unit === 'Minutes' || unit === 'minutes') totalSeconds = value * 60;
-        else if (unit === 'Hours' || unit === 'hours') totalSeconds = value * 3600;
-        else if (unit === 'Days' || unit === 'days') totalSeconds = value * 86400;
+    let isTimerExpired = false;
+    const attempt = attempts.find(att => att.assignment_id === a.id);
+    if (attempt && (a.durationValue || a.duration)) {
+      const value = parseInt(a.durationValue || a.duration, 10);
+      let totalSeconds = 0;
+      const unit = a.durationUnit || a.duration_unit;
+      if (unit === 'Minutes' || unit === 'minutes') totalSeconds = value * 60;
+      else if (unit === 'Hours' || unit === 'hours') totalSeconds = value * 3600;
+      else if (unit === 'Days' || unit === 'days') totalSeconds = value * 86400;
 
-        const startTime = new Date(attempt.start_time).getTime();
-        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-        if (elapsedSeconds >= totalSeconds) {
-          isTimerExpired = true;
-        }
+      const startTime = new Date(attempt.start_time).getTime();
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+      if (elapsedSeconds >= totalSeconds) {
+        isTimerExpired = true;
       }
+    }
 
-      return !hasSubmitted && !isPastDeadline && !isTimerExpired;
-    });
+    return !hasSubmitted && !isPastDeadline && !isTimerExpired;
+  });
 
+  const pendingByClass = pendingAssignments.reduce((acc, assignment) => {
+    const cls = userClasses.find(c => c.id === assignment.class_id);
+    const className = cls ? cls.name : 'Unknown Class';
+    if (!acc[className]) acc[className] = [];
+    acc[className].push(assignment);
+    return acc;
+  }, {});
 
-    const renderContent = () => {
-      switch (activeTab) {
-        case 'dashboard':
-          if (user.role === 'TEACHER') return <TeacherDashboard teacher={user} />;
-          if (user.role === 'STUDENT') return <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(tab, id) => { setActiveTab(tab); if (id) setActiveAssessmentId(id); }} />;
-          return null;
-
-        case 'materials':
-          return <Materials user={user} />;
-        case 'assessment-builder':
-          return <AssessmentBuilder teacher={user} />;
-        case 'ide':
-          return <CodingIDE student={user} initialAssignmentId={activeAssessmentId} />;
-        case 'assignments':
-          const pendingByClass = pendingAssignments.reduce((acc, assignment) => {
-            const cls = userClasses.find(c => c.id === assignment.class_id);
-            const className = cls ? cls.name : 'Unknown Class';
-            if (!acc[className]) acc[className] = [];
-            acc[className].push(assignment);
-            return acc;
-          }, {});
-
-          return (
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage onStart={() => navigate('/auth')} />} />
+      <Route path="/auth" element={<AuthPortal onLogin={handleLogin} onSignupSuccess={() => navigate('/confirm')} onBack={() => navigate('/')} />} />
+      <Route path="/confirm" element={<EmailConfirmation onBack={() => navigate('/')} />} />
+      <Route path="/update-password" element={<UpdatePassword onPasswordUpdated={() => navigate('/app/dashboard')} />} />
+      
+      {/* Protected App Routes */}
+      {user && (
+        <Route path="/app" element={<Layout user={user} onLogout={handleLogout} />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={
+            user.role === 'TEACHER' ? 
+            <TeacherDashboard teacher={user} /> : 
+            <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(route, id) => navigate(`/app/${route}/${id || ''}`)} />
+          } />
+          <Route path="materials" element={<Materials user={user} />} />
+          <Route path="assessment-builder" element={<AssessmentBuilder teacher={user} />} />
+          <Route path="ide/:assignmentId?" element={<IDEWrapper student={user} />} />
+          <Route path="assignments" element={
             <div className="space-y-10 animate-fade-in">
               <h3 className="text-3xl font-black flex items-center gap-4 text-white">
                 <span className="w-12 h-12 rounded-2xl bg-purple-600/20 text-purple-400 flex items-center justify-center shadow-inner">📝</span>
@@ -333,7 +337,7 @@ const App = () => {
                             <p className="text-sm text-slate-500 mb-10 leading-relaxed line-clamp-3 pointer-events-none">{a.description}</p>
                           </div>
                           <button
-                            onClick={() => { setActiveTab('ide'); setActiveAssessmentId(a.id); }}
+                            onClick={() => navigate(`/app/ide/${a.id}`)}
                             className="mt-auto w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-600/20 active:scale-95 border border-white/5"
                           >
                             {a.type === 'CODING' ? 'Open Smart IDE' : 'Open Assessment'}
@@ -345,69 +349,61 @@ const App = () => {
                 ))
               )}
             </div>
-          );
-
-        case 'attendance':
-          if (user.role === 'TEACHER') {
-            const teacherClassIds = userClasses.map(c => c.id);
-
-            // Get attendance records only for classes taught by this teacher
-            const teacherAttendance = attendance.filter(a => teacherClassIds.includes(a.class_id));
-
-            return <TeacherAttendanceView user={user} attendance={teacherAttendance} classes={userClasses} allStudents={allStudents} />;
-          }
-
-          return (
-            <div className="bg-slate-900 p-8 rounded-[40px] border border-white/10 shadow-xl animate-fade-in text-white">
-              <h3 className="text-xl font-bold mb-8">Personal Attendance History</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="text-slate-500 border-b border-white/5 font-black uppercase tracking-widest text-[10px]">
-                    <tr>
-                      <th className="pb-6">Resource Accessed</th>
-                      <th className="pb-6">Access Timestamp</th>
-                      <th className="pb-6">Verification</th>
-                      <th className="pb-6 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {attendance.filter(a => a.student_id === user.id).map(r => (
-                      <tr key={r.id} className="hover:bg-slate-950/50 transition-colors">
-                        <td className="py-6 font-bold text-slate-200">{r.material_title}</td>
-                        <td className="py-6 text-slate-400 text-xs">{new Date(r.timestamp).toLocaleString()}</td>
-                        <td className="py-6">
-                          <span className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 px-2 py-1 rounded">PLATFORM SIGNED ✓</span>
-                        </td>
-                        <td className="py-6 text-right">
-                          <span className="text-green-400 font-black text-[10px] uppercase">Present</span>
-                        </td>
+          } />
+          <Route path="attendance" element={
+            user.role === 'TEACHER' ? 
+              (() => {
+                const teacherClassIds = userClasses.map(c => c.id);
+                const teacherAttendance = attendance.filter(a => teacherClassIds.includes(a.class_id));
+                return <TeacherAttendanceView user={user} attendance={teacherAttendance} classes={userClasses} allStudents={allStudents} />;
+              })() :
+              <div className="bg-slate-900 p-8 rounded-[40px] border border-white/10 shadow-xl animate-fade-in text-white">
+                <h3 className="text-xl font-bold mb-8">Personal Attendance History</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-slate-500 border-b border-white/5 font-black uppercase tracking-widest text-[10px]">
+                      <tr>
+                        <th className="pb-6">Resource Accessed</th>
+                        <th className="pb-6">Access Timestamp</th>
+                        <th className="pb-6">Verification</th>
+                        <th className="pb-6 text-right">Status</th>
                       </tr>
-                    ))}
-                    {attendance.filter(a => a.student_id === user.id).length === 0 && (
-                      <tr><td colSpan={4} className="py-16 text-center text-slate-500 italic">Open classroom resources to mark your attendance.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {attendance.filter(a => a.student_id === user.id).map(r => (
+                        <tr key={r.id} className="hover:bg-slate-950/50 transition-colors">
+                          <td className="py-6 font-bold text-slate-200">{r.material_title}</td>
+                          <td className="py-6 text-slate-400 text-xs">{new Date(r.timestamp).toLocaleString()}</td>
+                          <td className="py-6">
+                            <span className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 px-2 py-1 rounded">PLATFORM SIGNED ✓</span>
+                          </td>
+                          <td className="py-6 text-right">
+                            <span className="text-green-400 font-black text-[10px] uppercase">Present</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {attendance.filter(a => a.student_id === user.id).length === 0 && (
+                        <tr><td colSpan={4} className="py-16 text-center text-slate-500 italic">Open classroom resources to mark your attendance.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          );
-        default:
-          return null;
-      }
-    };
+          } />
+        </Route>
+      )}
+      {/* Catch all route */}
+      <Route path="*" element={<Navigate to={user ? "/app/dashboard" : "/"} replace />} />
+    </Routes>
+  );
+};
 
-    return (
-      <Layout
-        user={user}
-        onLogout={handleLogout}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      >
-        {renderContent()}
-      </Layout>
-    );
-  }
-
+const App = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
 };
 
 export default App;
