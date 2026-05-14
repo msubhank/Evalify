@@ -115,9 +115,18 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
 
     const startTimer = async () => {
       let startTime;
+      let referenceTime; // Reliable time marker immune to local clock spoofing
+      let localPerformanceMarker; // Timestamp from performance.now()
+
       try {
         // Sync with backend attempt
         const res = await fetch(`${API_URL}/assignments/attempts?studentId=${student.id}&assignmentId=${selectedAssignment.id}`);
+        
+        // Extract server's current time from HTTP Date header to prevent local clock spoofing
+        const serverDateHeader = res.headers.get('Date');
+        referenceTime = serverDateHeader ? new Date(serverDateHeader).getTime() : Date.now();
+        localPerformanceMarker = performance.now();
+        
         const attempts = await res.json();
 
         if (attempts && attempts.length > 0) {
@@ -129,12 +138,15 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ studentId: student.id, assignmentId: selectedAssignment.id })
           });
+          
           const newAttempt = await postRes.json();
-          startTime = new Date(newAttempt.start_time || Date.now()).getTime();
+          startTime = new Date(newAttempt.start_time || referenceTime).getTime();
         }
       } catch (err) {
         console.error("Error syncing attempt timer:", err);
         startTime = Date.now();
+        referenceTime = Date.now();
+        localPerformanceMarker = performance.now();
       }
 
       const value = parseInt(selectedAssignment.durationValue || selectedAssignment.duration, 10);
@@ -150,7 +162,9 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
       else if (unit === 'Days' || unit === 'days') totalSeconds = value * 86400;
 
       const tick = () => {
-        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        // Calculate elapsed time using the un-spoofable performance.now() combined with server reference
+        const currentRealTime = referenceTime + (performance.now() - localPerformanceMarker);
+        const elapsedSeconds = Math.floor((currentRealTime - startTime) / 1000);
         const remaining = totalSeconds - elapsedSeconds;
 
         if (remaining <= 0) {
