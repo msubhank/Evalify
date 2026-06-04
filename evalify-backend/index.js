@@ -2,13 +2,44 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import { requireAuth } from './src/middleware/authMiddleware.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or server-to-server)
+        if (!origin) return callback(null, true);
+
+        // Allow any port on localhost or 127.0.0.1 for local dev flexibility
+        const isLocal = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+        const isProdEnv = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
+
+        if (isLocal || isProdEnv) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
+
+// Native Secure HTTP Headers (Helmet Alternative)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    // Enable HSTS in production environments
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
+
 app.use(express.json());
 
 // Import routes
@@ -37,7 +68,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Code Execution Endpoint (Glot.io)
-app.post('/api/execute', async (req, res) => {
+app.post('/api/execute', requireAuth, async (req, res) => {
     try {
         const { code, language, stdin } = req.body;
 

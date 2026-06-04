@@ -344,7 +344,7 @@ const TeacherDashboard = ({ teacher }) => {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {classStudents.map(s => {
-                        const studentLogs = logs.filter(l => l.student_id === s.id);
+                        const studentLogs = logs.filter(l => l.student_id === s.id && l.class_id === selectedClass.id);
                         return (
                           <tr key={s.id} className="hover:bg-slate-800/30 transition-all group">
                             <td className="p-6 sm:p-8">

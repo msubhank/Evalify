@@ -30,7 +30,7 @@ export const getIntegrityLogs = async (req, res) => {
         if (teacherId) {
             // Fetch logs for all students in classes taught by this teacher
             result = await query(`
-                SELECT il.*, u.name as student_name, a.title as assignment_title
+                SELECT il.*, u.name as student_name, a.title as assignment_title, a.class_id
                 FROM integrity_logs il
                 JOIN users u ON il.student_id = u.id
                 LEFT JOIN assignments a ON il.assignment_id = a.id

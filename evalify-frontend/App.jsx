@@ -175,10 +175,27 @@ const AppContent = () => {
       }
 
       if (session) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${session.access_token}`;
         try {
           // Fetch user profile from PostgreSQL DB
-          const res = await axios.get(`${API_URL}/auth/${session.user.id}`);
-          const storedUser = res.data;
+          let storedUser;
+          try {
+            const res = await axios.get(`${API_URL}/auth/${session.user.id}`);
+            storedUser = res.data;
+          } catch (err) {
+            // Auto-heal missing profile in PostgreSQL on first login
+            if (err.response?.status === 404) {
+              await axios.post(`${API_URL}/auth/sync`, {
+                name: session.user.user_metadata?.name || 'User',
+                role: session.user.user_metadata?.role || 'STUDENT',
+                regNo: session.user.user_metadata?.regNo || null
+              });
+              const res = await axios.get(`${API_URL}/auth/${session.user.id}`);
+              storedUser = res.data;
+            } else {
+              throw err;
+            }
+          }
 
           if (storedUser) {
             const [classesRes, attendanceRes, rosterRes, assignmentsRes, submissionsRes, attemptsRes] = await Promise.all([
@@ -208,7 +225,7 @@ const AppContent = () => {
               if (!prevUser) {
                 if (session.user.email_confirmed_at && event !== 'PASSWORD_RECOVERY') {
                   if (location.pathname === '/' || location.pathname === '/auth') {
-                     navigate('/app/dashboard', { replace: true });
+                    navigate('/app/dashboard', { replace: true });
                   }
                 }
                 return storedUser;
@@ -222,10 +239,11 @@ const AppContent = () => {
           setIsLoading(false);
         }
       } else {
+        delete axios.defaults.headers.common['Authorization'];
         setUser(null);
         setIsLoading(false);
         if (location.pathname.startsWith('/app')) {
-           navigate('/', { replace: true });
+          navigate('/', { replace: true });
         }
       }
     });
@@ -289,15 +307,15 @@ const AppContent = () => {
       <Route path="/auth" element={<AuthPortal onLogin={handleLogin} onSignupSuccess={() => navigate('/confirm')} onBack={() => navigate('/')} />} />
       <Route path="/confirm" element={<EmailConfirmation onBack={() => navigate('/')} />} />
       <Route path="/update-password" element={<UpdatePassword onPasswordUpdated={() => navigate('/app/dashboard')} />} />
-      
+
       {/* Protected App Routes */}
       {user && (
         <Route path="/app" element={<Layout user={user} onLogout={handleLogout} />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={
-            user.role === 'TEACHER' ? 
-            <TeacherDashboard teacher={user} /> : 
-            <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(route, id) => navigate(`/app/${route}/${id || ''}`)} />
+            user.role === 'TEACHER' ?
+              <TeacherDashboard teacher={user} /> :
+              <StudentDashboard student={user} onJoinClass={(updatedUser) => setUser(updatedUser)} onNavigate={(route, id) => navigate(`/app/${route}/${id || ''}`)} />
           } />
           <Route path="materials" element={<Materials user={user} />} />
           <Route path="assessment-builder" element={<AssessmentBuilder teacher={user} />} />
@@ -351,7 +369,7 @@ const AppContent = () => {
             </div>
           } />
           <Route path="attendance" element={
-            user.role === 'TEACHER' ? 
+            user.role === 'TEACHER' ?
               (() => {
                 const teacherClassIds = userClasses.map(c => c.id);
                 const teacherAttendance = attendance.filter(a => teacherClassIds.includes(a.class_id));

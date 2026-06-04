@@ -9,8 +9,12 @@ import {
     getAttempts,
     updateAssignment
 } from '../controllers/assignmentController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Enforce authentication for all assignment and submission endpoints
+router.use(requireAuth);
 
 router.post('/', createAssignment);
 router.get('/user/:userId', getUserAssignments);

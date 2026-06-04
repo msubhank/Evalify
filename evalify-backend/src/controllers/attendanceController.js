@@ -57,12 +57,21 @@ export const getAttendance = async (req, res) => {
 export const archiveAttendance = async (req, res) => {
     try {
         const { days = 30 } = req.body;
-        const result = await query(`
+        
+        // Coerce input to integer and validate to prevent arbitrary SQL injection
+        const daysInt = parseInt(days, 10);
+        if (isNaN(daysInt) || daysInt < 0) {
+            return res.status(400).json({ error: 'Invalid value for days. Must be a non-negative integer.' });
+        }
+
+        // Use parameterized query instead of string interpolation
+        const text = `
             UPDATE attendance 
             SET is_archived = TRUE, archived_at = NOW() 
-            WHERE timestamp < NOW() - INTERVAL '${days} days' AND is_archived = FALSE
+            WHERE timestamp < NOW() - ($1 * INTERVAL '1 day') AND is_archived = FALSE
             RETURNING *;
-        `);
+        `;
+        const result = await query(text, [daysInt]);
         res.status(200).json({ message: `${result.rowCount} records archived`, archived: result.rows });
     } catch (err) {
         console.error('Error archiving attendance:', err);

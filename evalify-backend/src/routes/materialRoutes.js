@@ -5,8 +5,12 @@ import {
     getUserMaterials,
     deleteMaterial
 } from '../controllers/materialController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Enforce authentication for all course material endpoints
+router.use(requireAuth);
 
 router.post('/', createMaterial);
 router.get('/class/:classId', getClassMaterials);

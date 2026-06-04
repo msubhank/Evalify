@@ -33,14 +33,36 @@ const AuthPortal = ({ onLogin, onSignupSuccess, onBack }) => {
           setError(error.message);
         } else {
           try {
+            // Set Bearer token in Axios default headers for this session
+            if (data.session) {
+              axios.defaults.headers.common['Authorization'] = `Bearer ${data.session.access_token}`;
+            }
+
             // Fetch user from Postgres
-            const res = await axios.get(`${API_URL}/auth/${data.user.id}`);
-            const fetchedUser = res.data;
+            let fetchedUser;
+            try {
+              const res = await axios.get(`${API_URL}/auth/${data.user.id}`);
+              fetchedUser = res.data;
+            } catch (apiError) {
+              if (apiError.response?.status === 404) {
+                // Auto-sync profile if not found in database on login
+                await axios.post(`${API_URL}/auth/sync`, {
+                  name: data.user.user_metadata?.name || 'User',
+                  role: data.user.user_metadata?.role || 'STUDENT',
+                  regNo: data.user.user_metadata?.regNo || null
+                });
+                const res = await axios.get(`${API_URL}/auth/${data.user.id}`);
+                fetchedUser = res.data;
+              } else {
+                throw apiError;
+              }
+            }
+
             fetchedUser.joinedClasses = fetchedUser.joinedClasses || []; // Safeguard
             onLogin(fetchedUser);
           } catch (apiError) {
-            console.error("Failed to fetch user from DB", apiError);
-            setError('User profile not found in database.');
+            console.error("Failed to fetch or sync user from DB", apiError);
+            setError(`User profile error: ${apiError.response?.data?.error || apiError.message}`);
           }
         }
       } else {
@@ -78,19 +100,20 @@ const AuthPortal = ({ onLogin, onSignupSuccess, onBack }) => {
           setError(error.message);
         } else {
           try {
-            // Sync user to PostgreSQL Database
-            await axios.post(`${API_URL}/auth/sync`, {
-              id: data.user.id,
-              name: formData.name,
-              email: formData.email,
-              role: role,
-              regNo: role === 'STUDENT' ? formData.regNo : null
-            });
+            // Sync user to PostgreSQL Database (only if already logged in / no email confirmation needed)
+            if (data.session) {
+              axios.defaults.headers.common['Authorization'] = `Bearer ${data.session.access_token}`;
+              await axios.post(`${API_URL}/auth/sync`, {
+                name: formData.name,
+                email: formData.email,
+                role: role,
+                regNo: role === 'STUDENT' ? formData.regNo : null
+              });
+            }
             onSignupSuccess();
           } catch (apiError) {
-            console.error("Failed to sync user to DB", apiError);
-            console.error("Error Response Data:", apiError.response?.data);
-            setError(`Registration succeeded, but failed to sync profile. ${apiError.response?.data?.error || apiError.message}`);
+            console.error("Failed to sync user to DB on registration", apiError);
+            onSignupSuccess(); // Proceed anyway; first login will auto-heal/sync the profile!
           }
         }
       }

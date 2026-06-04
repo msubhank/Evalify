@@ -70,6 +70,22 @@ export const getUserAssignments = async (req, res) => {
 export const deleteAssignment = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // BOLA Check: Verify requesting user is the teacher of the class
+        const checkAuthResult = await query(`
+            SELECT c.teacher_id 
+            FROM assignments a
+            JOIN classes c ON a.class_id = c.id
+            WHERE a.id = $1
+        `, [id]);
+
+        if (checkAuthResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Assignment not found' });
+        }
+        if (checkAuthResult.rows[0].teacher_id !== req.user.id) {
+            return res.status(403).json({ error: 'Forbidden: You do not own this resource' });
+        }
+
         await query('DELETE FROM assignments WHERE id = $1', [id]);
         res.status(200).json({ message: 'Assignment deleted successfully' });
     } catch (err) {
@@ -82,6 +98,21 @@ export const updateAssignment = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, deadline, durationValue, durationUnit, starterCode, language } = req.body;
+
+        // BOLA Check: Verify requesting user is the teacher of the class
+        const checkAuthResult = await query(`
+            SELECT c.teacher_id 
+            FROM assignments a
+            JOIN classes c ON a.class_id = c.id
+            WHERE a.id = $1
+        `, [id]);
+
+        if (checkAuthResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Assignment not found' });
+        }
+        if (checkAuthResult.rows[0].teacher_id !== req.user.id) {
+            return res.status(403).json({ error: 'Forbidden: You do not own this resource' });
+        }
 
         const text = `
             UPDATE assignments 

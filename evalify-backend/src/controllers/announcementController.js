@@ -70,10 +70,26 @@ export const getUserAnnouncements = async (req, res) => {
 export const deleteAnnouncement = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // BOLA Check: Verify requesting user is the teacher of the class
+        const checkAuthResult = await query(`
+            SELECT c.teacher_id 
+            FROM announcements a
+            JOIN classes c ON a.class_id = c.id
+            WHERE a.id = $1
+        `, [id]);
+
+        if (checkAuthResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Announcement not found' });
+        }
+        if (checkAuthResult.rows[0].teacher_id !== req.user.id) {
+            return res.status(403).json({ error: 'Forbidden: You do not own this resource' });
+        }
+
         await query('DELETE FROM announcements WHERE id = $1', [id]);
         res.status(200).json({ message: 'Announcement deleted successfully' });
     } catch (err) {
         console.error('Error deleting announcement:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error while deleting announcement' });
     }
 };

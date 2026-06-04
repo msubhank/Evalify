@@ -7,8 +7,12 @@ import {
     getUserClasses,
     getTeacherRoster
 } from '../controllers/classController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Enforce authentication for all class endpoints
+router.use(requireAuth);
 
 router.post('/', createClass);
 router.get('/', getClasses);

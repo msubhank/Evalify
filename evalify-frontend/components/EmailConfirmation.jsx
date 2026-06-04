@@ -1,30 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { supabase } from '../services/supabase';
 
 const EmailConfirmation = ({ onBack }) => {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  const handleResend = async () => {
-    setLoading(true);
-    setMessage('');
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: user.email
-      });
-      if (error) {
-        setMessage('Error resending email: ' + error.message);
-      } else {
-        setMessage('Confirmation email sent! Check your inbox.');
-      }
-    }
-    setLoading(false);
-  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    onBack();
   };
 
   return (
@@ -36,23 +17,9 @@ const EmailConfirmation = ({ onBack }) => {
           📧
         </div>
         <h1 className="text-3xl font-bold text-white mb-4">Check Your Email</h1>
-        <p className="text-slate-400 mb-6">
+        <p className="text-slate-400 mb-8">
           We've sent a confirmation link to your email address. Click the link to verify your account and continue.
         </p>
-        
-        {message && (
-          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-4 py-3 rounded-2xl text-sm font-medium mb-4">
-            {message}
-          </div>
-        )}
-
-        <button
-          onClick={handleResend}
-          disabled={loading}
-          className={`w-full font-bold py-4 rounded-2xl transition-all shadow-xl hover:scale-[1.02] active:scale-[0.98] mb-4 ${loading ? 'bg-slate-600 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'}`}
-        >
-          {loading ? 'Sending...' : 'Resend Confirmation Email'}
-        </button>
 
         <button
           onClick={handleSignOut}

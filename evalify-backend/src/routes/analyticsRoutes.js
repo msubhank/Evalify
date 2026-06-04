@@ -7,8 +7,12 @@ import {
     getAnnouncements,
     createAnnouncement
 } from '../controllers/analyticsController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Enforce authentication for all analytics endpoints
+router.use(requireAuth);
 
 router.post('/attendance', markAttendance);
 router.get('/attendance', getAttendance);

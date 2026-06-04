@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
+import { supabase } from '../services/supabase';
 
 const DEFAULT_CODE = '// Evalify Web-IDE\n// Select an assignment from the dropdown above to begin.\n\nfunction solve() {\n  console.log("Ready for assessment...");\n}';
 
@@ -20,23 +21,41 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const [timeLeft, setTimeLeft] = useState(null);
 
+  // Securely query APIs with access token
+  const authFetch = async (url, options = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [assignmentsRes, submissionsRes, integrityRes] = await Promise.all([
-          fetch(`${API_URL}/assignments/user/${student.id}`).then(res => res.json()),
-          fetch(`${API_URL}/assignments/submissions?studentId=${student.id}`).then(res => res.json()),
-          fetch(`${API_URL}/integrity?studentId=${student.id}`).then(res => res.json())
+          authFetch(`${API_URL}/assignments/user/${student.id}`).then(res => res.json()),
+          authFetch(`${API_URL}/assignments/submissions?studentId=${student.id}`).then(res => res.json()),
+          authFetch(`${API_URL}/integrity?studentId=${student.id}`).then(res => res.json())
         ]);
-        setAssignments(assignmentsRes);
-        setUserSubmissions(submissionsRes);
-        if (Array.isArray(integrityRes)) setIntegrityLogs(integrityRes);
+        
+        // Safeguards to avoid crash if unauthorized or error response is returned
+        setAssignments(Array.isArray(assignmentsRes) ? assignmentsRes : []);
+        setUserSubmissions(Array.isArray(submissionsRes) ? submissionsRes : []);
+        setIntegrityLogs(Array.isArray(integrityRes) ? integrityRes : []);
       } catch (error) {
         console.error("Error fetching IDE data:", error);
+        setAssignments([]);
+        setUserSubmissions([]);
       }
     };
     fetchData();
-  }, [student.id]);
+  }, [student.id, API_URL]);
 
   // Sync integrity flags from backend
   useEffect(() => {
@@ -120,7 +139,7 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
 
       try {
         // Sync with backend attempt
-        const res = await fetch(`${API_URL}/assignments/attempts?studentId=${student.id}&assignmentId=${selectedAssignment.id}`);
+        const res = await authFetch(`${API_URL}/assignments/attempts?studentId=${student.id}&assignmentId=${selectedAssignment.id}`);
         
         // Extract server's current time from HTTP Date header to prevent local clock spoofing
         const serverDateHeader = res.headers.get('Date');
@@ -129,13 +148,12 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
         
         const attempts = await res.json();
 
-        if (attempts && attempts.length > 0) {
+        if (attempts && Array.isArray(attempts) && attempts.length > 0) {
           startTime = new Date(attempts[0].start_time).getTime();
         } else {
           // If no backend attempt exists, create one
-          const postRes = await fetch(`${API_URL}/assignments/attempts`, {
+          const postRes = await authFetch(`${API_URL}/assignments/attempts`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ studentId: student.id, assignmentId: selectedAssignment.id })
           });
           
@@ -276,9 +294,8 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
         setSwitchCount(prev => prev + 1);
 
         // 2. Call backend once (Outside of the state setter)
-        fetch(`${API_URL}/integrity`, {
+        authFetch(`${API_URL}/integrity`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             studentId: student.id,
             assignmentId: selectedAssignmentId,
@@ -302,11 +319,8 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
     setIsExecuting(true);
     setOutput('');
     try {
-      const response = await fetch(`${API_URL}/execute`, {
+      const response = await authFetch(`${API_URL}/execute`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           code: code,
           language: language,
@@ -370,9 +384,8 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
     if (window.confirm("Are you sure you want to finalize your submission? You cannot resubmit after this.")) {
       setIsSubmitting(true);
       try {
-        const response = await fetch(`${API_URL}/assignments/submissions`, {
+        const response = await authFetch(`${API_URL}/assignments/submissions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             assignmentId: selectedAssignmentId,
             studentId: student.id,
@@ -501,9 +514,8 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
               onCopy={(e) => {
                 e.preventDefault();
                 alert("Copying questions is disabled for integrity.");
-                fetch(`${API_URL}/integrity`, {
+                authFetch(`${API_URL}/integrity`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     studentId: student.id,
                     assignmentId: selectedAssignmentId,
