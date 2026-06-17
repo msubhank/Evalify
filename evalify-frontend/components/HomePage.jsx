@@ -14,7 +14,7 @@ const HomePage = ({ onStart }) => {
             <a href="#vision" className="hover:text-white transition-colors">Vision</a>
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-white transition-colors">Workflow</a>
-            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+            <a href="#quick-links" className="hover:text-white transition-colors">FAQ</a>
           </div>
           <button
             onClick={onStart}
@@ -37,7 +37,7 @@ const HomePage = ({ onStart }) => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
             </span>
-            Launching Soon
+            Live Now
           </div>
           <h1 className="text-6xl md:text-9xl font-black mb-10 leading-[1] tracking-tighter text-white drop-shadow-2xl">
             Smarter Learning. <br />
@@ -68,7 +68,7 @@ const HomePage = ({ onStart }) => {
                 <h4 className="text-xl font-bold mb-3 flex items-center gap-3">
                   <span className="text-blue-500">01.</span> Automatic Verifiable Attendance
                 </h4>
-                <p className="text-slate-400">No more manual roll calls. Evalify logs student engagement the moment they interact with PDFs, Slides, and Coding challenges.</p>
+                <p className="text-slate-400">No more manual roll calls. Evalify logs student engagement the moment they interact with PDFs, Slides,etc.</p>
               </div>
               <div className="p-8 rounded-3xl bg-slate-950/50 border border-white/5 hover:border-indigo-500/20 transition-all">
                 <h4 className="text-xl font-bold mb-3 flex items-center gap-3">
@@ -107,9 +107,9 @@ const HomePage = ({ onStart }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {[
-              { title: "Monaco Pro IDE", desc: "The same core as VS Code. High performance, multi-language, and buttery smooth directly in the browser.", icon: "⌨️" },
+              { title: "Monaco  IDE", desc: "The same core as VS Code. High performance, multi-language, and buttery smooth directly in the browser.", icon: "⌨️" },
               { title: "Class Isolation", desc: "Materials and slides are strictly grouped by classroom, preventing unauthorized cross-access.", icon: "🔒" },
-              { title: "Attendance System", desc: "Attendance is automatically taken on the basis when students interact with pdfs,slides and lab exams.", icon: "🆔" },
+              { title: "Attendance System", desc: "Attendance is automatically taken on the basis when students interact with pdfs,slides etc.", icon: "🆔" },
               { title: "Resource Vault", desc: "Securely host PDFs and Lecture Slides. Access is tracked and verified for every student view.", icon: "📦" },
               { title: "Lab Submission", desc: "One-click lab delivery. Teachers receive code snapshots immediately for grading and review.", icon: "🚀" },
               { title: "Integrity Logs", desc: "Real-time tab-switching detection and activity tracking to maintain assessment fairness.", icon: "🔐" }
@@ -160,12 +160,12 @@ const HomePage = ({ onStart }) => {
           </div>
 
           <div>
-            <h5 className="font-bold text-white mb-8 uppercase tracking-widest text-sm">Quick Links</h5>
+            <h5 id="quick-links" className="font-bold text-white mb-8 uppercase tracking-widest text-sm">Quick Links</h5>
             <div className="flex flex-col space-y-4 text-slate-400 font-medium">
               <a href="https://drive.google.com/file/d/1u3k3m2a_fJg2l80txot4eoXVcW_HD7uV/view?usp=drivesdk" className="hover:text-blue-400 transition-colors">Documentation</a>
-              <a href="#" className="hover:text-blue-400 transition-colors">Instructor Guide</a>
+              <a href="https://drive.google.com/file/d/1u3k3m2a_fJg2l80txot4eoXVcW_HD7uV/view?usp=drivesdk" className="hover:text-blue-400 transition-colors">Instructor Guide</a>
               <a href="https://glot.io/" className="hover:text-blue-400 transition-colors">API Integration</a>
-              <a href="#" className="hover:text-blue-400 transition-colors">Privacy Shield</a>
+              {/* <a href="#" className="hover:text-blue-400 transition-colors">Privacy Shield</a> */}
             </div>
           </div>
 

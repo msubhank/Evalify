@@ -315,6 +315,24 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
     };
   }, [student.id, selectedAssignmentId, hasSubmitted]);
 
+  const handleEditorClipboardAction = (e, actionType) => {
+    if (selectedAssignmentId && !hasSubmitted) {
+      e.preventDefault();
+      e.stopPropagation();
+      alert(`${actionType} is strictly disabled during active assessments to maintain academic integrity.`);
+      
+      authFetch(`${API_URL}/integrity`, {
+        method: 'POST',
+        body: JSON.stringify({
+          studentId: student.id,
+          assignmentId: selectedAssignmentId,
+          type: 'COPY_PASTE',
+          description: `Student attempted to ${actionType.toLowerCase()} code in the editor.`
+        })
+      }).catch(err => console.error("Integrity log failed:", err));
+    }
+  };
+
   const handleRun = async () => {
     setIsExecuting(true);
     setOutput('');
@@ -538,7 +556,17 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
           )}
 
           {/* Monaco Editor Component */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] rounded-[32px] overflow-hidden border border-white/10 shadow-2xl relative group min-h-[300px]">
+          <div
+            className="flex-1 flex flex-col bg-[#1e1e1e] rounded-[32px] overflow-hidden border border-white/10 shadow-2xl relative group min-h-[300px]"
+            onCopyCapture={(e) => handleEditorClipboardAction(e, 'Copying')}
+            onPasteCapture={(e) => handleEditorClipboardAction(e, 'Pasting')}
+            onCutCapture={(e) => handleEditorClipboardAction(e, 'Cutting')}
+            onContextMenu={(e) => {
+              if (selectedAssignmentId && !hasSubmitted) {
+                e.preventDefault();
+              }
+            }}
+          >
             <div className="absolute top-0 w-full h-10 bg-gradient-to-b from-black/40 to-transparent z-10 pointer-events-none flex items-center px-4">
               <div className="text-[10px] font-black uppercase tracking-widest text-white/30">src/main.{language === 'javascript' ? 'js' : language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : 'java'}</div>
             </div>
@@ -565,6 +593,7 @@ const CodingIDE = ({ student, initialAssignmentId }) => {
                 scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
                 renderLineHighlight: "all",
                 readOnly: hasSubmitted,
+                contextmenu: !(selectedAssignmentId && !hasSubmitted),
               }}
             />
           </div>
