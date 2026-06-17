@@ -22,13 +22,13 @@ const Layout = ({ user, onLogout }) => {
       {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed md:static inset-y-0 left-0 z-40 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 transition-transform duration-300 w-64 bg-slate-950 border-r border-slate-800 flex flex-col`}>
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 transition-transform duration-300 w-64 bg-slate-950 border-r border-slate-800 flex flex-col`}>
         <div className="p-6">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
             Evalify
@@ -74,7 +74,7 @@ const Layout = ({ user, onLogout }) => {
 
       {/* Main Content */}
       <main className="flex-1 h-screen overflow-auto bg-slate-950/50 relative w-full">
-        <header className="sticky top-0 z-10 backdrop-blur-md bg-slate-950/80 border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center">
+        <header className="sticky top-0 z-30 backdrop-blur-md bg-slate-950/80 border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden text-slate-400 hover:text-white focus:outline-none"

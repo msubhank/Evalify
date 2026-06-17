@@ -445,20 +445,24 @@ const TeacherDashboard = ({ teacher }) => {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 text-left relative z-10">
-                          <div className="bg-slate-900 rounded-3xl p-6 border border-white/5 h-64 overflow-auto shadow-inner group-hover:bg-blue-600/5 transition-all">
-                            <h6 className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-4 flex items-center gap-2">
+                          <div className="bg-slate-900 rounded-3xl p-6 border border-white/5 h-64 shadow-inner group-hover:bg-blue-600/5 transition-all flex flex-col">
+                            <h6 className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-4 flex items-center gap-2 flex-shrink-0">
                               <span className="w-2 h-2 rounded-full bg-blue-500"></span> Source Code
                             </h6>
-                            <pre className="text-xs font-mono text-indigo-400 leading-relaxed">{sub.code}</pre>
+                            <div className="flex-1 overflow-auto custom-scrollbar">
+                              <pre className="text-xs font-mono text-indigo-400 leading-relaxed pb-6">{sub.code}</pre>
+                            </div>
                           </div>
 
-                          <div className="bg-[#0B0F19] rounded-3xl p-6 border border-white/5 h-64 overflow-auto shadow-2xl">
-                            <h6 className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-4 flex items-center gap-2">
+                          <div className="bg-[#0B0F19] rounded-3xl p-6 border border-white/5 h-64 shadow-2xl flex flex-col">
+                            <h6 className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-4 flex items-center gap-2 flex-shrink-0">
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Output
                             </h6>
-                            <pre className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${sub.output?.includes('ERROR]') ? 'text-red-400' : 'text-emerald-400'} font-medium`}>
-                              {sub.output || 'No output recorded.'}
-                            </pre>
+                            <div className="flex-1 overflow-auto custom-scrollbar">
+                              <pre className={`text-xs font-mono leading-relaxed whitespace-pre-wrap ${sub.output?.includes('ERROR]') ? 'text-red-400' : 'text-emerald-400'} font-medium pb-6`}>
+                                {sub.output || 'No output recorded.'}
+                              </pre>
+                            </div>
                           </div>
                         </div>
 
@@ -741,8 +745,8 @@ const TeacherDashboard = ({ teacher }) => {
                       </h4>
                       <span className="text-[9px] text-slate-700 font-mono uppercase tracking-widest">{inspectSubmission.language || 'Standard'} Script</span>
                     </div>
-                    <div className="bg-slate-950 border border-white/5 rounded-[32px] p-8 shadow-inner overflow-x-auto min-h-[400px]">
-                      <pre className="text-sm font-mono text-indigo-400 leading-relaxed tab-size-4">
+                     <div className="bg-slate-950 border border-white/5 rounded-[32px] p-8 shadow-inner overflow-x-auto custom-scrollbar min-h-[400px]">
+                      <pre className="text-sm font-mono text-indigo-400 leading-relaxed tab-size-4 pb-6">
                         {inspectSubmission.code}
                       </pre>
                     </div>
@@ -760,8 +764,8 @@ const TeacherDashboard = ({ teacher }) => {
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-800"></span>
                       </div>
                     </div>
-                    <div className="bg-[#05070A] border border-white/10 rounded-[32px] p-8 shadow-2xl overflow-x-auto min-h-[400px]">
-                      <pre className={`text-sm font-mono leading-relaxed whitespace-pre-wrap ${inspectSubmission.output?.includes('ERROR]') ? 'text-red-400' : 'text-emerald-400'} font-medium`}>
+                    <div className="bg-[#05070A] border border-white/10 rounded-[32px] p-8 shadow-2xl overflow-x-auto custom-scrollbar min-h-[400px]">
+                      <pre className={`text-sm font-mono leading-relaxed whitespace-pre-wrap ${inspectSubmission.output?.includes('ERROR]') ? 'text-red-400' : 'text-emerald-400'} font-medium pb-6`}>
                         {inspectSubmission.output || 'No logs generated during execution.'}
                       </pre>
                     </div>
@@ -773,6 +777,24 @@ const TeacherDashboard = ({ teacher }) => {
           </div>
         );
       })()}
+      {/* Local scrollbar injection just for this component */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      `}} />
     </div>
   );
 };
